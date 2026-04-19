@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgriSense PH — DA Officer Dashboard</title>
+  <meta name="theme-color" content="#185FA5">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #f0f4f8; color: #1a2a3a; min-height: 100vh;
+    }
+
+    /* ── TOP NAV — Blue theme para sa DA ── */
+    .topnav {
+      background: #185FA5; padding: 12px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-logo  { font-size: 22px; }
+    .nav-title { color: #fff; font-size: 16px; font-weight: 700; margin-left: 10px; }
+    .nav-sub   { color: #a8c8f0; font-size: 10px; }
+    .nav-badge {
+      background: rgba(255,255,255,0.15); color: #fff;
+      border-radius: 20px; padding: 4px 12px;
+      font-size: 11px; font-weight: 700;
+    }
+    .btn-logout {
+      background: rgba(255,255,255,0.15); border: none;
+      color: #fff; padding: 5px 12px; border-radius: 20px;
+      font-size: 12px; cursor: pointer; font-weight: 600;
+    }
+
+    .main { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+    .section-lbl {
+      font-size: 11px; font-weight: 700; color: #185FA5;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      margin: 20px 0 10px; display: flex; align-items: center; gap: 6px;
+    }
+    .section-lbl::after { content: ''; flex: 1; height: 1px; background: #b5d4f4; }
+
+    /* ── ALERT BANNER — for high severity outbreaks ── */
+    .outbreak-banner {
+      background: #fff0f0; border: 1.5px solid #c02020;
+      border-radius: 14px; padding: 14px 16px; margin-bottom: 16px;
+      display: none;
+    }
+    .outbreak-banner.visible { display: block; }
+    .outbreak-title { font-size: 15px; font-weight: 800; color: #8a1010; margin-bottom: 6px; }
+    .outbreak-items { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .outbreak-pill {
+      background: #ffe0e0; border-radius: 20px; padding: 4px 12px;
+      font-size: 12px; font-weight: 600; color: #8a1010;
+    }
+
+    /* ── METRIC CARDS ── */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 12px; margin-bottom: 4px;
+    }
+    .metric-card {
+      background: #fff; border-radius: 14px;
+      padding: 16px; border: 0.5px solid #b5d4f4;
+    }
+    .metric-icon  { font-size: 22px; margin-bottom: 8px; }
+    .metric-value { font-size: 32px; font-weight: 800; color: #1a2a3a; line-height: 1; }
+    .metric-label { font-size: 12px; color: #4a6a8a; margin-top: 4px; }
+    .metric-sub   { font-size: 11px; color: #8aaa9a; margin-top: 2px; }
+
+    /* ── CHART GRID ── */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 14px; margin-bottom: 4px;
+    }
+    .chart-card {
+      background: #fff; border-radius: 14px;
+      padding: 16px; border: 0.5px solid #b5d4f4;
+    }
+    .chart-title {
+      font-size: 13px; font-weight: 700;
+      color: #1a2a3a; margin-bottom: 14px;
+    }
+    .chart-wrap { position: relative; height: 220px; }
+
+    /* ── DISEASE ALERTS TABLE ── */
+    .alert-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px; margin-bottom: 4px;
+    }
+    .alert-card {
+      background: #fff; border-radius: 14px;
+      padding: 14px; border: 0.5px solid #b5d4f4;
+    }
+    .alert-card.critical { border-left: 4px solid #c02020; }
+    .alert-card.warning  { border-left: 4px solid #c08000; }
+    .alert-card.monitor  { border-left: 4px solid #185FA5; }
+    .alert-disease { font-size: 15px; font-weight: 800; color: #1a2a3a; }
+    .alert-loc     { font-size: 12px; color: #5a7a9a; margin-top: 3px; }
+    .alert-count   { font-size: 13px; font-weight: 700; margin-top: 6px; }
+    .alert-count.critical { color: #c02020; }
+    .alert-count.warning  { color: #c08000; }
+    .alert-time    { font-size: 11px; color: #9aaa9a; margin-top: 3px; }
+    .alert-status  {
+      display: inline-block; padding: 3px 10px;
+      border-radius: 20px; font-size: 10px; font-weight: 700;
+      margin-top: 8px;
+    }
+    .status-critical { background: #ffe0e0; color: #8a1010; }
+    .status-warning  { background: #fff3cc; color: #7a4a00; }
+    .status-monitor  { background: #e6f1fb; color: #0c447c; }
+
+    /* ── REPORT SECTION ── */
+    .report-card {
+      background: #fff; border-radius: 14px;
+      padding: 20px; border: 0.5px solid #b5d4f4;
+    }
+    .report-header {
+      display: flex; justify-content: space-between;
+      align-items: center; margin-bottom: 16px;
+    }
+    .report-title { font-size: 14px; font-weight: 700; color: #1a2a3a; }
+    .btn-print {
+      padding: 8px 16px; background: #185FA5; color: #fff;
+      border: none; border-radius: 10px; font-size: 13px;
+      font-weight: 600; cursor: pointer;
+    }
+    .report-stat-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 10px; margin-bottom: 14px;
+    }
+    .report-stat {
+      background: #f0f4f8; border-radius: 10px;
+      padding: 10px; text-align: center;
+    }
+    .report-stat-val { font-size: 20px; font-weight: 800; color: #185FA5; }
+    .report-stat-lbl { font-size: 11px; color: #5a7a9a; margin-top: 2px; }
+
+    /* ── BARANGAY TABLE ── */
+    .table-card {
+      background: #fff; border-radius: 14px;
+      border: 0.5px solid #b5d4f4; overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: #e6f1fb; padding: 10px 14px;
+      text-align: left; font-weight: 600; color: #0c447c;
+      font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.04em; border-bottom: 1px solid #b5d4f4;
+    }
+    td { padding: 10px 14px; border-bottom: 1px solid #e8f0f8; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f5f8fc; }
+
+    .risk-badge {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 10px; font-size: 10px; font-weight: 700;
+    }
+    .risk-high   { background: #ffe0e0; color: #8a1010; }
+    .risk-medium { background: #fff3cc; color: #7a4a00; }
+    .risk-low    { background: #e0f0e0; color: #1a5a1a; }
+
+    .loading-overlay {
+      position: fixed; inset: 0; background: rgba(240,244,248,0.9);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; z-index: 200;
+    }
+    .loading-spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #b5d4f4; border-top-color: #185FA5;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      margin-bottom: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .empty-state { text-align: center; padding: 24px; color: #7a9aaa; font-size: 13px; }
+
+    @media print {
+      .topnav, .btn-print, .btn-logout { display: none; }
+      body { background: #fff; }
+      .main { padding: 0; max-width: 100%; }
+    }
+
+    @media (max-width: 600px) {
+      .main { padding: 12px; }
+      .metric-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-grid  { grid-template-columns: 1fr; }
+      .report-stat-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="loading-overlay" id="loading">
+    <div class="loading-spinner"></div>
+    <div style="font-size:13px;color:#185FA5;font-weight:600">Nilo-load ang DA Dashboard...</div>
+  </div>
+
+  <!-- Top Nav -->
+  <nav class="topnav">
+    <div style="display:flex;align-items:center">
+      <div class="nav-logo">🏛️</div>
+      <div style="margin-left:10px">
+        <div class="nav-title">AgriSense PH — DA Officer</div>
+        <div class="nav-sub">Department of Agriculture · Central Luzon Monitoring</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="nav-badge" id="da-name">DA Officer</span>
+      <button class="btn-logout" onclick="handleLogout()">Logout</button>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- Outbreak Banner — lalabas kapag may critical outbreak -->
+    <div class="outbreak-banner" id="outbreak-banner">
+      <div class="outbreak-title">🚨 AKTIBONG OUTBREAK ALERTS — Kailangan ng Aksyon</div>
+      <div style="font-size:12px;color:#8a1010">
+        Ang mga sumusunod na lugar ay may mataas na bilang ng disease detections:
+      </div>
+      <div class="outbreak-items" id="outbreak-items"></div>
+    </div>
+
+    <!-- ── SUMMARY METRICS ── -->
+    <div class="section-lbl">Pangkalahatang Ulat · Overall Summary</div>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-icon">👨‍🌾</div>
+        <div class="metric-value" id="total-farmers">—</div>
+        <div class="metric-label">Farmers sa Sistema</div>
+        <div class="metric-sub">Central Luzon</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">🔍</div>
+        <div class="metric-value" id="total-detections">—</div>
+        <div class="metric-label">Kabuuang Detections</div>
+        <div class="metric-sub">Ngayong buwan</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">🚨</div>
+        <div class="metric-value" id="outbreak-count">—</div>
+        <div class="metric-label">Active Outbreaks</div>
+        <div class="metric-sub">Kailangan ng aksyon</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">📍</div>
+        <div class="metric-value" id="affected-locations">—</div>
+        <div class="metric-label">Affected Locations</div>
+        <div class="metric-sub">Mga lugar na may sakit</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">🦠</div>
+        <div class="metric-value" id="top-disease">—</div>
+        <div class="metric-label">Pinaka-common na Sakit</div>
+        <div class="metric-sub" id="top-disease-count">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">📅</div>
+        <div class="metric-value" id="last-updated">—</div>
+        <div class="metric-label">Huling Update</div>
+        <div class="metric-sub">Real-time data</div>
+      </div>
+    </div>
+
+    <!-- ── DISEASE ALERTS ── -->
+    <div class="section-lbl">Disease Outbreak Alerts</div>
+    <div class="alert-grid" id="alerts-grid">
+      <div class="empty-state">Nilo-load ang alerts...</div>
+    </div>
+
+    <!-- ── CHARTS ── -->
+    <div class="section-lbl">Mga Chart · Disease Trends</div>
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">📊 Disease Distribution — Ngayong Buwan</div>
+        <div class="chart-wrap">
+          <canvas id="disease-chart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">📈 Monthly Trend — Nakaraang 6 Buwan</div>
+        <div class="chart-wrap">
+          <canvas id="monthly-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BARANGAY RISK TABLE ── -->
+    <div class="section-lbl">Risk Level per Location</div>
+    <div class="table-card">
+      <table>
+        <thead>
+          <tr>
+            <th>Lugar / Location</th>
+            <th>Kabuuang Detections</th>
+            <th>Pinaka-common na Sakit</th>
+            <th>Risk Level</th>
+            <th>Huling Detection</th>
+          </tr>
+        </thead>
+        <tbody id="location-tbody">
+          <tr><td colspan="5" class="empty-state">Nilo-load...</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── OFFICIAL REPORT ── -->
+    <div class="section-lbl">Opisyal na Ulat · Official Report</div>
+    <div class="report-card" id="printable-report">
+      <div class="report-header">
+        <div>
+          <div class="report-title">📋 AgriSense PH — Disease Surveillance Report</div>
+          <div style="font-size:12px;color:#5a7a9a;margin-top:3px">
+            Department of Agriculture · Central Luzon · <span id="report-date">—</span>
+          </div>
+        </div>
+        <button class="btn-print" onclick="window.print()">🖨️ I-print ang Report</button>
+      </div>
+
+      <div class="report-stat-grid">
+        <div class="report-stat">
+          <div class="report-stat-val" id="rpt-farmers">—</div>
+          <div class="report-stat-lbl">Farmers Monitored</div>
+        </div>
+        <div class="report-stat">
+          <div class="report-stat-val" id="rpt-detections">—</div>
+          <div class="report-stat-lbl">Total Detections</div>
+        </div>
+        <div class="report-stat">
+          <div class="report-stat-val" id="rpt-disease-rate">—</div>
+          <div class="report-stat-lbl">Disease Rate</div>
+        </div>
+      </div>
+
+      <div style="font-size:13px;line-height:1.8;color:#2a3a4a" id="report-summary">
+        Nilo-load ang report summary...
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase.js"></script>
+
+  <script>
+    let allDetections = [], allAlerts = [], charts = {};
+
+    const DISEASE_COLORS = {
+      'Rice Blast':            '#c05000',
+      'Bacterial Leaf Blight': '#b84a00',
+      'Brown Spot':            '#8a5a00',
+      'Healthy Rice':          '#1e7a3e',
+      'Early Blight':          '#d04000',
+      'Late Blight':           '#a03000',
+      'Leaf Mold':             '#7a4a20',
+      'Healthy Tomato':        '#2d8a4e'
+    };
+
+    // ── INIT ────────────────────────────────────────────────────
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) { window.location.href = 'auth.html'; return; }
+
+      const hasAccess = await checkUserRole([USER_ROLES.DA_OFFICER, USER_ROLES.ADMIN]);
+      if (!hasAccess) {
+        alert('Walang access — DA Officer lang ang puwede dito.');
+        await auth.signOut();
+        window.location.href = 'auth.html';
+        return;
+      }
+
+      const profile = await getCurrentUserProfile();
+      document.getElementById('da-name').textContent = profile?.name || 'DA Officer';
+
+      await loadData();
+      setupRealtimeListeners();
+      document.getElementById('loading').style.display = 'none';
+    });
+
+    // ── LOAD DATA ────────────────────────────────────────────────
+    async function loadData() {
+      try {
+        const [detectionsSnap, farmersSnap, alertsSnap] = await Promise.all([
+          COLLECTIONS.detections.orderBy('syncedAt', 'desc').limit(500).get(),
+          COLLECTIONS.users.where('role', '==', 'farmer').get(),
+          COLLECTIONS.alerts.where('resolved', '==', false)
+            .orderBy('createdAt', 'desc').get()
+        ]);
+
+        allDetections = detectionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const farmers = farmersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        allAlerts     = alertsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        renderAll(farmers);
+      } catch (e) {
+        console.error('Load error:', e);
+      }
+    }
+
+    function renderAll(farmers) {
+      renderMetrics(farmers);
+      renderAlerts();
+      renderCharts();
+      renderLocationTable();
+      renderReport(farmers);
+    }
+
+    // ── RENDER METRICS ───────────────────────────────────────────
+    function renderMetrics(farmers) {
+      const diseased = allDetections.filter(d =>
+        !d.disease?.toLowerCase().includes('healthy'));
+
+      // Top disease
+      const diseaseCounts = {};
+      diseased.forEach(d => {
+        diseaseCounts[d.disease] = (diseaseCounts[d.disease] || 0) + 1;
+      });
+      const topDisease = Object.entries(diseaseCounts)
+        .sort((a,b) => b[1]-a[1])[0];
+
+      // Unique locations
+      const locations = new Set(
+        allDetections
+          .filter(d => d.weather?.locationName)
+          .map(d => d.weather.locationName)
+      );
+
+      document.getElementById('total-farmers').textContent    = farmers.length;
+      document.getElementById('total-detections').textContent = allDetections.length;
+      document.getElementById('outbreak-count').textContent   = allAlerts.length;
+      document.getElementById('affected-locations').textContent = locations.size;
+      document.getElementById('top-disease').textContent      =
+        topDisease ? topDisease[0].split(' ')[0] : '—'; // First word only para sa space
+      document.getElementById('top-disease-count').textContent =
+        topDisease ? `${topDisease[1]} cases` : '—';
+      document.getElementById('last-updated').textContent     =
+        new Date().toLocaleTimeString('en-PH', { hour: '2-digit', minute: '2-digit' });
+
+      // Outbreak banner
+      const highAlerts = allAlerts.filter(a => a.severity === 'high');
+      const banner = document.getElementById('outbreak-banner');
+      if (highAlerts.length > 0) {
+        banner.classList.add('visible');
+        document.getElementById('outbreak-items').innerHTML =
+          highAlerts.map(a =>
+            `<span class="outbreak-pill">🚨 ${a.disease} · ${a.locationName || 'Unknown'} (${a.affectedCount} cases)</span>`
+          ).join('');
+      }
+    }
+
+    // ── RENDER ALERTS ────────────────────────────────────────────
+    function renderAlerts() {
+      const grid = document.getElementById('alerts-grid');
+      if (!allAlerts.length) {
+        grid.innerHTML = '<div class="empty-state" style="grid-column:1/-1">Walang active outbreak alerts. Maayos ang sitwasyon. ✓</div>';
+        return;
+      }
+
+      grid.innerHTML = allAlerts.slice(0, 6).map(alert => {
+        const level = alert.severity === 'high' ? 'critical' : 'warning';
+        return `
+          <div class="alert-card ${level}">
+            <div class="alert-disease">🦠 ${alert.disease}</div>
+            <div class="alert-loc">📍 ${alert.locationName || 'Unknown location'}</div>
+            <div class="alert-count ${level}">${alert.affectedCount} cases sa loob ng 7 araw</div>
+            <div class="alert-time">⏰ ${formatTimestamp(alert.createdAt)}</div>
+            <span class="alert-status status-${level}">
+              ${level === 'critical' ? '🚨 CRITICAL' : '⚠ WARNING'}
+            </span>
+          </div>`;
+      }).join('');
+    }
+
+    // ── RENDER CHARTS ────────────────────────────────────────────
+    function renderCharts() {
+      // Disease distribution
+      const counts = {};
+      allDetections.forEach(d => { counts[d.disease] = (counts[d.disease] || 0) + 1; });
+      const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+
+      if (charts.disease) charts.disease.destroy();
+      charts.disease = new Chart(document.getElementById('disease-chart'), {
+        type: 'bar',
+        data: {
+          labels: sorted.map(([d]) => d),
+          datasets: [{
+            data: sorted.map(([,c]) => c),
+            backgroundColor: sorted.map(([d]) => DISEASE_COLORS[d] || '#7ab87a'),
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true }, x: { ticks: { font: { size: 10 } } } }
+        }
+      });
+
+      // Monthly trend (last 6 months)
+      const months = [];
+      const monthData = [];
+      const now = new Date();
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push(d.toLocaleDateString('en-PH', { month: 'short', year: '2-digit' }));
+        const count = allDetections.filter(det => {
+          const date = det.syncedAt?.toDate ? det.syncedAt.toDate() : new Date(det.timestamp);
+          return date.getMonth() === d.getMonth() && date.getFullYear() === d.getFullYear();
+        }).length;
+        monthData.push(count);
+      }
+
+      if (charts.monthly) charts.monthly.destroy();
+      charts.monthly = new Chart(document.getElementById('monthly-chart'), {
+        type: 'line',
+        data: {
+          labels: months,
+          datasets: [{
+            label: 'Detections',
+            data: monthData,
+            borderColor: '#185FA5', backgroundColor: 'rgba(24,95,165,0.1)',
+            tension: 0.3, fill: true, pointRadius: 5,
+            pointBackgroundColor: '#185FA5'
+          }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    // ── RENDER LOCATION TABLE ────────────────────────────────────
+    function renderLocationTable() {
+      const tbody = document.getElementById('location-tbody');
+
+      // I-group ang detections per location
+      const locationMap = {};
+      allDetections.forEach(d => {
+        const loc = d.weather?.locationName || 'Unknown';
+        if (!locationMap[loc]) locationMap[loc] = { total: 0, diseases: {}, lastDate: null };
+        locationMap[loc].total++;
+        locationMap[loc].diseases[d.disease] = (locationMap[loc].diseases[d.disease] || 0) + 1;
+        if (!locationMap[loc].lastDate) locationMap[loc].lastDate = d.syncedAt;
+      });
+
+      const locations = Object.entries(locationMap)
+        .sort((a, b) => b[1].total - a[1].total);
+
+      if (!locations.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Walang location data pa.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = locations.map(([loc, data]) => {
+        const topDisease = Object.entries(data.diseases)
+          .sort((a,b) => b[1]-a[1])[0];
+        const diseasedCount = Object.entries(data.diseases)
+          .filter(([d]) => !d.toLowerCase().includes('healthy'))
+          .reduce((sum, [,c]) => sum + c, 0);
+        const riskLevel = diseasedCount >= 5 ? 'high'
+          : diseasedCount >= 2 ? 'medium' : 'low';
+
+        return `
+          <tr>
+            <td style="font-weight:600">📍 ${loc}</td>
+            <td style="font-weight:700;color:#185FA5">${data.total}</td>
+            <td>${topDisease ? topDisease[0] : '—'}</td>
+            <td>
+              <span class="risk-badge risk-${riskLevel}">
+                ${riskLevel === 'high' ? '🔴 High' : riskLevel === 'medium' ? '🟡 Medium' : '🟢 Low'}
+              </span>
+            </td>
+            <td style="color:#7a9aaa;font-size:12px">${formatTimestamp(data.lastDate)}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    // ── RENDER REPORT ────────────────────────────────────────────
+    function renderReport(farmers) {
+      const today     = new Date().toLocaleDateString('en-PH', {
+        month: 'long', day: 'numeric', year: 'numeric'
+      });
+      const diseased  = allDetections.filter(d =>
+        !d.disease?.toLowerCase().includes('healthy')).length;
+      const diseaseRate = allDetections.length > 0
+        ? Math.round(diseased / allDetections.length * 100) : 0;
+
+      document.getElementById('report-date').textContent       = today;
+      document.getElementById('rpt-farmers').textContent       = farmers.length;
+      document.getElementById('rpt-detections').textContent    = allDetections.length;
+      document.getElementById('rpt-disease-rate').textContent  = diseaseRate + '%';
+
+      // Disease breakdown para sa report
+      const diseaseCounts = {};
+      allDetections.forEach(d => {
+        if (!d.disease?.toLowerCase().includes('healthy')) {
+          diseaseCounts[d.disease] = (diseaseCounts[d.disease] || 0) + 1;
+        }
+      });
+      const topDiseases = Object.entries(diseaseCounts)
+        .sort((a,b) => b[1]-a[1]).slice(0, 3);
+
+      const summaryLines = topDiseases.length > 0
+        ? `<strong>Nangungunang mga sakit:</strong><br>` +
+          topDiseases.map(([d, c]) =>
+            `• ${d}: ${c} cases (${Math.round(c/diseased*100)}% ng lahat ng may sakit)`
+          ).join('<br>')
+        : 'Walang disease detections pa.';
+
+      document.getElementById('report-summary').innerHTML = `
+        <strong>Petsa ng Ulat:</strong> ${today}<br>
+        <strong>Lugar:</strong> Central Luzon, Philippines<br>
+        <strong>Bilang ng Farmers:</strong> ${farmers.length} registered na farmers<br>
+        <strong>Kabuuang Detections:</strong> ${allDetections.length} (${diseaseRate}% may sakit)<br>
+        <strong>Active Outbreaks:</strong> ${allAlerts.length} locations<br><br>
+        ${summaryLines}<br><br>
+        <strong>Rekomendasyon:</strong>
+        ${allAlerts.length > 0
+          ? 'Mag-deploy ng agricultural extension workers sa mga affected na areas. Mag-distribute ng fungicide at treatment materials sa mga farmers.'
+          : 'Patuloy na bantayan ang sitwasyon. Walang emergency intervention na kailangan sa kasalukuyan.'}`;
+    }
+
+    // ── REAL-TIME LISTENERS ──────────────────────────────────────
+    function setupRealtimeListeners() {
+      COLLECTIONS.detections.orderBy('syncedAt', 'desc').limit(1)
+        .onSnapshot(() => loadData());
+
+      COLLECTIONS.alerts.where('resolved', '==', false)
+        .onSnapshot(snap => {
+          allAlerts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          renderAlerts();
+          document.getElementById('outbreak-count').textContent = allAlerts.length;
+        });
+    }
+
+    // ── LOGOUT ───────────────────────────────────────────────────
+    async function handleLogout() {
+      await auth.signOut();
+      window.location.href = 'auth.html';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgriSense PH — Admin Dashboard</title>
+  <meta name="theme-color" content="#1e5c1e">
+  <!-- Chart.js para sa mga charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #f0f5f0; color: #1a3a1a; min-height: 100vh;
+    }
+
+    /* ── TOP NAV ── */
+    .topnav {
+      background: #1e5c1e; padding: 12px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-left   { display: flex; align-items: center; gap: 10px; }
+    .nav-logo   { font-size: 22px; }
+    .nav-title  { color: #fff; font-size: 16px; font-weight: 700; }
+    .nav-sub    { color: #a8d4a8; font-size: 10px; }
+    .nav-right  { display: flex; align-items: center; gap: 10px; }
+    .nav-user   { color: #a8d4a8; font-size: 12px; }
+    .btn-logout {
+      background: rgba(255,255,255,0.15); border: none;
+      color: #fff; padding: 5px 12px; border-radius: 20px;
+      font-size: 12px; cursor: pointer; font-weight: 600;
+    }
+
+    /* ── MAIN LAYOUT ── */
+    .main { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+    /* ── SECTION LABEL ── */
+    .section-lbl {
+      font-size: 11px; font-weight: 700; color: #3a6a3a;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      margin: 20px 0 10px; display: flex; align-items: center; gap: 6px;
+    }
+    .section-lbl::after { content: ''; flex: 1; height: 1px; background: #d4e8d4; }
+
+    /* ── METRIC CARDS ── */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px; margin-bottom: 4px;
+    }
+    .metric-card {
+      background: #fff; border-radius: 14px;
+      padding: 16px; border: 0.5px solid #d4e8d4;
+    }
+    .metric-icon  { font-size: 22px; margin-bottom: 8px; }
+    .metric-value { font-size: 32px; font-weight: 800; color: #1a3a1a; line-height: 1; }
+    .metric-label { font-size: 12px; color: #5a7a5a; margin-top: 4px; }
+    .metric-sub   { font-size: 11px; color: #9aaa9a; margin-top: 2px; }
+
+    /* ── CHART GRID ── */
+    .chart-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 14px; margin-bottom: 4px;
+    }
+    .chart-card {
+      background: #fff; border-radius: 14px;
+      padding: 16px; border: 0.5px solid #d4e8d4;
+    }
+    .chart-title {
+      font-size: 13px; font-weight: 700;
+      color: #1a3a1a; margin-bottom: 14px;
+    }
+    .chart-wrap { position: relative; height: 220px; }
+
+    /* ── ALERTS SECTION ── */
+    .alert-card {
+      background: #fff; border-radius: 14px;
+      padding: 14px 16px; border: 0.5px solid #d4e8d4;
+      margin-bottom: 8px; display: flex;
+      align-items: flex-start; gap: 12px;
+    }
+    .alert-card.high   { border-left: 4px solid #c02020; }
+    .alert-card.medium { border-left: 4px solid #c08000; }
+    .alert-dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      flex-shrink: 0; margin-top: 4px;
+    }
+    .alert-dot.high   { background: #c02020; animation: blink 1s infinite; }
+    .alert-dot.medium { background: #c08000; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .alert-disease  { font-size: 14px; font-weight: 700; color: #1a3a1a; }
+    .alert-location { font-size: 12px; color: #5a7a5a; margin-top: 2px; }
+    .alert-count    { font-size: 12px; color: #c05000; margin-top: 2px; font-weight: 600; }
+    .alert-time     { font-size: 11px; color: #9aaa9a; margin-top: 2px; }
+    .alert-resolve  {
+      margin-left: auto; padding: 5px 12px;
+      background: #eaf5ea; border: none; border-radius: 8px;
+      font-size: 11px; font-weight: 600; color: #1a5a1a;
+      cursor: pointer; flex-shrink: 0;
+    }
+
+    /* ── FARMERS TABLE ── */
+    .table-card {
+      background: #fff; border-radius: 14px;
+      border: 0.5px solid #d4e8d4; overflow: hidden;
+    }
+    .table-header {
+      padding: 14px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid #e8f0e8;
+    }
+    .table-title { font-size: 13px; font-weight: 700; color: #1a3a1a; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: #f5fbf5; padding: 10px 14px;
+      text-align: left; font-weight: 600; color: #3a6a3a;
+      font-size: 11px; text-transform: uppercase;
+      letter-spacing: 0.04em; border-bottom: 1px solid #e8f0e8;
+    }
+    td {
+      padding: 10px 14px; border-bottom: 1px solid #f0f8f0;
+      color: #1a3a1a;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fcf8; }
+
+    /* Role badges */
+    .role-badge {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 10px; font-size: 10px; font-weight: 700;
+    }
+    .role-farmer     { background: #eaf5ea; color: #1a5a1a; }
+    .role-admin      { background: #e6f1fb; color: #0c447c; }
+    .role-da_officer { background: #eeedfe; color: #3c3489; }
+
+    /* Disease badge */
+    .disease-badge {
+      display: inline-block; padding: 2px 8px;
+      border-radius: 10px; font-size: 10px; font-weight: 700;
+      background: #fff0ea; color: #7a2800;
+    }
+    .disease-badge.healthy { background: #eaf5ea; color: #1a5a1a; }
+
+    /* ── FILTERS ── */
+    .filter-row {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .filter-select {
+      padding: 7px 12px; border: 1.5px solid #d4e8d4;
+      border-radius: 10px; font-size: 13px; background: #fff;
+      color: #1a3a1a; cursor: pointer; outline: none;
+    }
+    .filter-select:focus { border-color: #1e5c1e; }
+
+    /* ── LOADING ── */
+    .loading-overlay {
+      position: fixed; inset: 0; background: rgba(240,245,240,0.9);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 200;
+    }
+    .loading-spinner {
+      width: 40px; height: 40px;
+      border: 4px solid #d4e8d4; border-top-color: #1e5c1e;
+      border-radius: 50%; animation: spin 0.7s linear infinite;
+      margin-bottom: 12px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── REAL-TIME BADGE ── */
+    .realtime-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #eaf5ea; border-radius: 20px;
+      padding: 3px 10px; font-size: 11px; font-weight: 600; color: #1a5a1a;
+    }
+    .realtime-dot {
+      width: 6px; height: 6px; background: #1e7a3e;
+      border-radius: 50%; animation: blink 1.5s infinite;
+    }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center; padding: 30px; color: #7a9a7a; font-size: 13px;
+    }
+
+    @media (max-width: 600px) {
+      .main { padding: 12px; }
+      .metric-grid { grid-template-columns: repeat(2, 1fr); }
+      .chart-grid  { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" id="loading">
+    <div class="loading-spinner"></div>
+    <div style="font-size:13px;color:#3a6a3a;font-weight:600">Nilo-load ang dashboard...</div>
+  </div>
+
+  <!-- Top Navigation -->
+  <nav class="topnav">
+    <div class="nav-left">
+      <div class="nav-logo">🌿</div>
+      <div>
+        <div class="nav-title">AgriSense PH — Admin</div>
+        <div class="nav-sub">Community Analytics Dashboard</div>
+      </div>
+    </div>
+    <div class="nav-right">
+      <span class="realtime-badge">
+        <div class="realtime-dot"></div>
+        Real-time
+      </span>
+      <span class="nav-user" id="admin-name">—</span>
+      <button class="btn-logout" onclick="handleLogout()">Logout</button>
+    </div>
+  </nav>
+
+  <main class="main">
+
+    <!-- ── SUMMARY METRICS ── -->
+    <div class="section-lbl">Buod ng Komunidad · Community Summary</div>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-icon">👨‍🌾</div>
+        <div class="metric-value" id="total-farmers">—</div>
+        <div class="metric-label">Kabuuang Farmers</div>
+        <div class="metric-sub">Registered sa sistema</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">🔍</div>
+        <div class="metric-value" id="total-detections">—</div>
+        <div class="metric-label">Kabuuang Detections</div>
+        <div class="metric-sub" id="detections-period">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">🦠</div>
+        <div class="metric-value" id="disease-rate">—</div>
+        <div class="metric-label">Disease Rate</div>
+        <div class="metric-sub">% ng may sakit</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">🚨</div>
+        <div class="metric-value" id="active-alerts">—</div>
+        <div class="metric-label">Active Alerts</div>
+        <div class="metric-sub">Outbreak warnings</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">🌾</div>
+        <div class="metric-value" id="rice-detections">—</div>
+        <div class="metric-label">Rice Detections</div>
+        <div class="metric-sub" id="rice-pct">—</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-icon">🍅</div>
+        <div class="metric-value" id="tomato-detections">—</div>
+        <div class="metric-label">Tomato Detections</div>
+        <div class="metric-sub" id="tomato-pct">—</div>
+      </div>
+    </div>
+
+    <!-- ── CHARTS ── -->
+    <div class="section-lbl">Mga Chart · Disease Analytics</div>
+    <div class="chart-grid">
+      <!-- Disease Breakdown Doughnut -->
+      <div class="chart-card">
+        <div class="chart-title">🥧 Disease Breakdown — Lahat ng Detections</div>
+        <div class="chart-wrap">
+          <canvas id="disease-chart"></canvas>
+        </div>
+      </div>
+      <!-- Weekly Trend Line -->
+      <div class="chart-card">
+        <div class="chart-title">📈 Weekly Detection Trend — Nakaraang 4 Linggo</div>
+        <div class="chart-wrap">
+          <canvas id="trend-chart"></canvas>
+        </div>
+      </div>
+      <!-- Crop Comparison Bar -->
+      <div class="chart-card">
+        <div class="chart-title">📊 Crop Comparison — Rice vs Tomato</div>
+        <div class="chart-wrap">
+          <canvas id="crop-chart"></canvas>
+        </div>
+      </div>
+      <!-- Severity Distribution -->
+      <div class="chart-card">
+        <div class="chart-title">⚠ Severity Distribution — Mild · Moderate · Severe</div>
+        <div class="chart-wrap">
+          <canvas id="severity-chart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ACTIVE ALERTS ── -->
+    <div class="section-lbl">Active Outbreak Alerts</div>
+    <div id="alerts-container">
+      <div class="empty-state">Walang active alerts ngayon.</div>
+    </div>
+
+    <!-- ── RECENT DETECTIONS TABLE ── -->
+    <div class="section-lbl">Mga Kamakailang Detections · Recent Detections</div>
+    <div class="filter-row">
+      <select class="filter-select" id="filter-crop" onchange="applyFilters()">
+        <option value="">Lahat ng Crops</option>
+        <option value="rice">Palay / Rice</option>
+        <option value="tomato">Kamatis / Tomato</option>
+      </select>
+      <select class="filter-select" id="filter-disease" onchange="applyFilters()">
+        <option value="">Lahat ng Diseases</option>
+        <option value="Rice Blast">Rice Blast</option>
+        <option value="Bacterial Leaf Blight">Bacterial Leaf Blight</option>
+        <option value="Brown Spot">Brown Spot</option>
+        <option value="Healthy Rice">Healthy Rice</option>
+        <option value="Early Blight">Early Blight</option>
+        <option value="Late Blight">Late Blight</option>
+        <option value="Leaf Mold">Leaf Mold</option>
+        <option value="Healthy Tomato">Healthy Tomato</option>
+      </select>
+      <select class="filter-select" id="filter-days" onchange="applyFilters()">
+        <option value="7">Huling 7 Araw</option>
+        <option value="30" selected>Huling 30 Araw</option>
+        <option value="90">Huling 3 Buwan</option>
+      </select>
+    </div>
+
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">Detection Records</div>
+        <button style="padding:6px 14px;background:#1e5c1e;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer" onclick="exportCSV()">
+          📥 Export CSV
+        </button>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Petsa</th>
+              <th>Farmer</th>
+              <th>Barangay</th>
+              <th>Crop</th>
+              <th>Disease</th>
+              <th>Confidence</th>
+              <th>Severity</th>
+              <th>Larawan</th>
+            </tr>
+          </thead>
+          <tbody id="detections-tbody">
+            <tr><td colspan="8" class="empty-state">Nilo-load...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── FARMERS LIST ── -->
+    <div class="section-lbl">Listahan ng Farmers · Registered Farmers</div>
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">Farmers (<span id="farmers-count">0</span>)</div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead>
+            <tr>
+              <th>Pangalan</th>
+              <th>Email</th>
+              <th>Barangay</th>
+              <th>Role</th>
+              <th>Detections</th>
+              <th>Naka-register</th>
+            </tr>
+          </thead>
+          <tbody id="farmers-tbody">
+            <tr><td colspan="6" class="empty-state">Nilo-load...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase.js"></script>
+
+  <script>
+    // ── GLOBAL DATA ─────────────────────────────────────────────
+    let allDetections = [];
+    let allFarmers    = [];
+    let allAlerts     = [];
+    let charts        = {};
+
+    // ── CHART COLORS ────────────────────────────────────────────
+    const DISEASE_COLORS = {
+      'Rice Blast':            '#c05000',
+      'Bacterial Leaf Blight': '#b84a00',
+      'Brown Spot':            '#8a5a00',
+      'Healthy Rice':          '#1e7a3e',
+      'Early Blight':          '#d04000',
+      'Late Blight':           '#a03000',
+      'Leaf Mold':             '#7a4a20',
+      'Healthy Tomato':        '#2d8a4e'
+    };
+
+    // ── INIT ────────────────────────────────────────────────────
+    auth.onAuthStateChanged(async (user) => {
+      if (!user) {
+        window.location.href = 'auth.html';
+        return;
+      }
+
+      // Verify admin role
+      const hasAccess = await checkUserRole([USER_ROLES.ADMIN]);
+      if (!hasAccess) {
+        alert('Walang access — admin lang ang puwedeng pumasok dito.');
+        await auth.signOut();
+        window.location.href = 'auth.html';
+        return;
+      }
+
+      const profile = await getCurrentUserProfile();
+      document.getElementById('admin-name').textContent = profile?.name || user.email;
+
+      // I-load ang lahat ng data
+      await loadDashboardData();
+
+      // I-setup ang real-time listeners para auto-update ang dashboard
+      setupRealtimeListeners();
+
+      document.getElementById('loading').style.display = 'none';
+    });
+
+    // ── LOAD DASHBOARD DATA ──────────────────────────────────────
+    async function loadDashboardData() {
+      const days = parseInt(document.getElementById('filter-days').value) || 30;
+      const cropFilter    = document.getElementById('filter-crop').value;
+      const diseaseFilter = document.getElementById('filter-disease').value;
+
+      try {
+        // Fetch in parallel para mas mabilis
+        const [detectionsSnap, farmersSnap, alertsSnap] = await Promise.all([
+          buildDetectionsQuery(cropFilter, diseaseFilter).limit(500).get(),
+          COLLECTIONS.users.where('role', '==', 'farmer').get(),
+          COLLECTIONS.alerts.where('resolved', '==', false)
+            .orderBy('createdAt', 'desc').limit(10).get()
+        ]);
+
+        allDetections = detectionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        allFarmers    = farmersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        allAlerts     = alertsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // I-render ang lahat
+        renderMetrics();
+        renderCharts();
+        renderAlerts();
+        renderDetectionsTable();
+        renderFarmersTable();
+
+      } catch (error) {
+        console.error('Dashboard load error:', error);
+      }
+    }
+
+    function buildDetectionsQuery(crop, disease) {
+      let query = COLLECTIONS.detections.orderBy('syncedAt', 'desc');
+      if (crop)    query = query.where('crop', '==', crop);
+      if (disease) query = query.where('disease', '==', disease);
+      return query;
+    }
+
+    // ── RENDER METRICS ───────────────────────────────────────────
+    function renderMetrics() {
+      const total     = allDetections.length;
+      const diseased  = allDetections.filter(d =>
+        !d.disease?.toLowerCase().includes('healthy')).length;
+      const rice      = allDetections.filter(d => d.crop === 'rice').length;
+      const tomato    = allDetections.filter(d => d.crop === 'tomato').length;
+      const diseaseRate = total > 0 ? Math.round(diseased / total * 100) : 0;
+
+      document.getElementById('total-farmers').textContent    = allFarmers.length;
+      document.getElementById('total-detections').textContent = total;
+      document.getElementById('disease-rate').textContent     = diseaseRate + '%';
+      document.getElementById('active-alerts').textContent    = allAlerts.length;
+      document.getElementById('rice-detections').textContent  = rice;
+      document.getElementById('tomato-detections').textContent = tomato;
+      document.getElementById('rice-pct').textContent =
+        total > 0 ? Math.round(rice / total * 100) + '% ng lahat' : '—';
+      document.getElementById('tomato-pct').textContent =
+        total > 0 ? Math.round(tomato / total * 100) + '% ng lahat' : '—';
+    }
+
+    // ── RENDER CHARTS ────────────────────────────────────────────
+    function renderCharts() {
+      renderDiseaseChart();
+      renderTrendChart();
+      renderCropChart();
+      renderSeverityChart();
+    }
+
+    function renderDiseaseChart() {
+      // Bilangin ang bawat disease
+      const counts = {};
+      allDetections.forEach(d => {
+        counts[d.disease] = (counts[d.disease] || 0) + 1;
+      });
+
+      const sorted = Object.entries(counts).sort((a,b) => b[1]-a[1]);
+      const labels = sorted.map(([d]) => d);
+      const data   = sorted.map(([,c]) => c);
+      const colors = labels.map(l => DISEASE_COLORS[l] || '#7ab87a');
+
+      if (charts.disease) charts.disease.destroy();
+      charts.disease = new Chart(
+        document.getElementById('disease-chart'),
+        {
+          type: 'doughnut',
+          data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 2, borderColor: '#fff' }] },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { position: 'right', labels: { font: { size: 11 }, padding: 8 } } }
+          }
+        }
+      );
+    }
+
+    function renderTrendChart() {
+      // I-group ang detections per week (last 4 weeks)
+      const weeks = ['4 linggo na', '3 linggo na', '2 linggo na', 'Nakaraang linggo'];
+      const weekData = [0, 0, 0, 0];
+      const now = new Date();
+
+      allDetections.forEach(d => {
+        const date = d.syncedAt?.toDate ? d.syncedAt.toDate() : new Date(d.timestamp);
+        const daysAgo = Math.floor((now - date) / (1000 * 60 * 60 * 24));
+        if (daysAgo < 7)  weekData[3]++;
+        else if (daysAgo < 14) weekData[2]++;
+        else if (daysAgo < 21) weekData[1]++;
+        else if (daysAgo < 28) weekData[0]++;
+      });
+
+      if (charts.trend) charts.trend.destroy();
+      charts.trend = new Chart(
+        document.getElementById('trend-chart'),
+        {
+          type: 'line',
+          data: {
+            labels: weeks,
+            datasets: [{
+              label: 'Detections',
+              data: weekData,
+              borderColor: '#1e5c1e', backgroundColor: 'rgba(30,92,30,0.1)',
+              tension: 0.3, fill: true, pointRadius: 5,
+              pointBackgroundColor: '#1e5c1e'
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: { beginAtZero: true, ticks: { stepSize: 1 } }
+            }
+          }
+        }
+      );
+    }
+
+    function renderCropChart() {
+      const rice   = allDetections.filter(d => d.crop === 'rice').length;
+      const tomato = allDetections.filter(d => d.crop === 'tomato').length;
+
+      if (charts.crop) charts.crop.destroy();
+      charts.crop = new Chart(
+        document.getElementById('crop-chart'),
+        {
+          type: 'bar',
+          data: {
+            labels: ['Palay / Rice', 'Kamatis / Tomato'],
+            datasets: [{
+              data: [rice, tomato],
+              backgroundColor: ['#1e5c1e', '#c05000'],
+              borderRadius: 8
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+          }
+        }
+      );
+    }
+
+    function renderSeverityChart() {
+      const mild     = allDetections.filter(d => d.severity === 'mild').length;
+      const moderate = allDetections.filter(d => d.severity === 'moderate').length;
+      const severe   = allDetections.filter(d => d.severity === 'severe').length;
+
+      if (charts.severity) charts.severity.destroy();
+      charts.severity = new Chart(
+        document.getElementById('severity-chart'),
+        {
+          type: 'bar',
+          data: {
+            labels: ['Mild (70–79%)', 'Moderate (80–89%)', 'Severe (90%+)'],
+            datasets: [{
+              data: [mild, moderate, severe],
+              backgroundColor: ['#7ab87a', '#c08000', '#c02020'],
+              borderRadius: 8
+            }]
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+          }
+        }
+      );
+    }
+
+    // ── RENDER ALERTS ────────────────────────────────────────────
+    function renderAlerts() {
+      const container = document.getElementById('alerts-container');
+      if (!allAlerts.length) {
+        container.innerHTML = '<div class="empty-state">Walang active outbreak alerts ngayon. ✓</div>';
+        return;
+      }
+
+      container.innerHTML = allAlerts.map(alert => `
+        <div class="alert-card ${alert.severity}">
+          <div class="alert-dot ${alert.severity}"></div>
+          <div style="flex:1">
+            <div class="alert-disease">🚨 ${alert.disease}</div>
+            <div class="alert-location">📍 ${alert.locationName || 'Unknown location'}</div>
+            <div class="alert-count">${alert.affectedCount} cases na-detect sa loob ng 7 araw</div>
+            <div class="alert-time">${formatTimestamp(alert.createdAt)}</div>
+          </div>
+          <button class="alert-resolve" onclick="resolveAlert('${alert.id}')">
+            ✓ Resolve
+          </button>
+        </div>`).join('');
+    }
+
+    async function resolveAlert(alertId) {
+      if (!confirm('I-mark bilang resolved ang alert na ito?')) return;
+      await COLLECTIONS.alerts.doc(alertId).update({ resolved: true });
+      allAlerts = allAlerts.filter(a => a.id !== alertId);
+      renderAlerts();
+      document.getElementById('active-alerts').textContent = allAlerts.length;
+    }
+
+    // ── RENDER DETECTIONS TABLE ──────────────────────────────────
+    function renderDetectionsTable() {
+      const tbody = document.getElementById('detections-tbody');
+      if (!allDetections.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="empty-state">Walang detections pa.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = allDetections.slice(0, 100).map(d => {
+        const isHealthy = d.disease?.toLowerCase().includes('healthy');
+        const badgeClass = isHealthy ? 'healthy' : '';
+        const cropEmoji  = d.crop === 'rice' ? '🌾' : '🍅';
+        return `
+          <tr>
+            <td style="white-space:nowrap">${formatTimestamp(d.syncedAt)}</td>
+            <td>${d.farmerName || d.userId?.slice(0,8) + '...' || '—'}</td>
+            <td>${d.weather?.locationName || '—'}</td>
+            <td>${cropEmoji} ${d.crop === 'rice' ? 'Palay' : 'Kamatis'}</td>
+            <td><span class="disease-badge ${badgeClass}">${d.disease || '—'}</span></td>
+            <td>${d.confidence || '—'}%</td>
+            <td>${d.severity || '—'}</td>
+            <td>${d.photoUrl
+              ? `<a href="${d.photoUrl}" target="_blank" style="color:#1e5c1e;font-weight:600;font-size:11px">Tingnan</a>`
+              : '<span style="color:#9aaa9a">Wala</span>'}</td>
+          </tr>`;
+      }).join('');
+    }
+
+    // ── RENDER FARMERS TABLE ─────────────────────────────────────
+    async function renderFarmersTable() {
+      const tbody = document.getElementById('farmers-tbody');
+      document.getElementById('farmers-count').textContent = allFarmers.length;
+
+      if (!allFarmers.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">Walang registered farmers pa.</td></tr>';
+        return;
+      }
+
+      // Bilang ng detections per farmer
+      const detectionCounts = {};
+      allDetections.forEach(d => {
+        detectionCounts[d.userId] = (detectionCounts[d.userId] || 0) + 1;
+      });
+
+      tbody.innerHTML = allFarmers.map(f => `
+        <tr>
+          <td style="font-weight:600">${f.name || '—'}</td>
+          <td style="color:#5a7a5a">${f.email || '—'}</td>
+          <td>${f.barangay || '—'}</td>
+          <td><span class="role-badge role-${f.role}">${f.role}</span></td>
+          <td style="font-weight:600;color:#1e5c1e">${detectionCounts[f.id] || 0}</td>
+          <td style="color:#7a9a7a">${formatTimestamp(f.createdAt)}</td>
+        </tr>`).join('');
+    }
+
+    // ── REAL-TIME LISTENERS ──────────────────────────────────────
+    function setupRealtimeListeners() {
+      // Listen sa bagong detections — real-time update
+      COLLECTIONS.detections
+        .orderBy('syncedAt', 'desc')
+        .limit(1)
+        .onSnapshot(snapshot => {
+          snapshot.docChanges().forEach(change => {
+            if (change.type === 'added') {
+              // May bagong detection — i-reload ang dashboard
+              loadDashboardData();
+            }
+          });
+        });
+
+      // Listen sa bagong alerts
+      COLLECTIONS.alerts
+        .where('resolved', '==', false)
+        .onSnapshot(snapshot => {
+          allAlerts = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+          renderAlerts();
+          document.getElementById('active-alerts').textContent = allAlerts.length;
+        });
+    }
+
+    // ── FILTERS ─────────────────────────────────────────────────
+    function applyFilters() {
+      loadDashboardData();
+    }
+
+    // ── EXPORT CSV ───────────────────────────────────────────────
+    function exportCSV() {
+      const headers = ['Date', 'Farmer', 'Barangay', 'Crop', 'Disease', 'Confidence', 'Severity', 'Lat', 'Lon'];
+      const rows = allDetections.map(d => [
+        formatTimestamp(d.syncedAt),
+        d.farmerName || d.userId || '',
+        d.weather?.locationName || '',
+        d.crop || '',
+        d.disease || '',
+        d.confidence || '',
+        d.severity || '',
+        d.location?.lat || '',
+        d.location?.lon || ''
+      ]);
+
+      const csv = [headers, ...rows]
+        .map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url  = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url; link.download = 'agrisense_community_data.csv';
+      document.body.appendChild(link); link.click();
+      setTimeout(() => { document.body.removeChild(link); URL.revokeObjectURL(url); }, 100);
+    }
+
+    // ── LOGOUT ───────────────────────────────────────────────────
+    async function handleLogout() {
+      await auth.signOut();
+      window.location.href = 'auth.html';
+    }
+  </script>
+</body>
+</html>
