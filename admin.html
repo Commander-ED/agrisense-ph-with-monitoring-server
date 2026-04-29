@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgriSense PH — Admin Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f5f0; }
+    .topnav { background: #1e5c1e; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+    .nav-title { color: #fff; font-size: 16px; font-weight: 700; }
+    .nav-sub   { color: #a8d4a8; font-size: 10px; }
+    .nav-right { display: flex; align-items: center; gap: 10px; }
+    .nav-user  { color: #a8d4a8; font-size: 12px; }
+    .btn-logout { background: rgba(255,255,255,0.15); border: none; color: #fff; padding: 5px 12px; border-radius: 20px; font-size: 12px; cursor: pointer; font-weight: 600; }
+    .realtime-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.15); border-radius: 20px; padding: 3px 10px; font-size: 11px; font-weight: 600; color: #fff; }
+    .realtime-dot { width: 6px; height: 6px; background: #7aff7a; border-radius: 50%; animation: blink 1.5s infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .main { max-width: 1200px; margin: 0 auto; padding: 20px; }
+    .section-lbl { font-size: 11px; font-weight: 700; color: #3a6a3a; letter-spacing: 0.07em; text-transform: uppercase; margin: 20px 0 10px; display: flex; align-items: center; gap: 6px; }
+    .section-lbl::after { content: ''; flex: 1; height: 1px; background: #d4e8d4; }
+    .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 4px; }
+    .metric-card { background: #fff; border-radius: 14px; padding: 16px; border: 0.5px solid #d4e8d4; }
+    .metric-icon  { font-size: 22px; margin-bottom: 8px; }
+    .metric-value { font-size: 32px; font-weight: 800; color: #1a3a1a; line-height: 1; }
+    .metric-label { font-size: 12px; color: #5a7a5a; margin-top: 4px; }
+    .metric-sub   { font-size: 11px; color: #9aaa9a; margin-top: 2px; }
+    .chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; margin-bottom: 4px; }
+    .chart-card { background: #fff; border-radius: 14px; padding: 16px; border: 0.5px solid #d4e8d4; }
+    .chart-title { font-size: 13px; font-weight: 700; color: #1a3a1a; margin-bottom: 14px; }
+    .chart-wrap { position: relative; height: 220px; }
+    .alert-card { background: #fff; border-radius: 14px; padding: 14px 16px; border: 0.5px solid #d4e8d4; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; }
+    .alert-card.high   { border-left: 4px solid #c02020; }
+    .alert-card.medium { border-left: 4px solid #c08000; }
+    .alert-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+    .alert-dot.high   { background: #c02020; animation: blink 1s infinite; }
+    .alert-dot.medium { background: #c08000; }
+    .alert-disease  { font-size: 14px; font-weight: 700; color: #1a3a1a; }
+    .alert-location { font-size: 12px; color: #5a7a5a; margin-top: 2px; }
+    .alert-count    { font-size: 12px; color: #c05000; margin-top: 2px; font-weight: 600; }
+    .alert-time     { font-size: 11px; color: #9aaa9a; margin-top: 2px; }
+    .alert-resolve  { margin-left: auto; padding: 5px 12px; background: #eaf5ea; border: none; border-radius: 8px; font-size: 11px; font-weight: 600; color: #1a5a1a; cursor: pointer; flex-shrink: 0; }
+    .table-card { background: #fff; border-radius: 14px; border: 0.5px solid #d4e8d4; overflow: hidden; margin-bottom: 14px; }
+    .table-header { padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #e8f0e8; }
+    .table-title { font-size: 13px; font-weight: 700; color: #1a3a1a; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { background: #f5fbf5; padding: 10px 14px; text-align: left; font-weight: 600; color: #3a6a3a; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid #e8f0e8; }
+    td { padding: 10px 14px; border-bottom: 1px solid #f0f8f0; color: #1a3a1a; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fcf8; }
+    .filter-row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .filter-select { padding: 7px 12px; border: 1.5px solid #d4e8d4; border-radius: 10px; font-size: 13px; background: #fff; color: #1a3a1a; cursor: pointer; outline: none; }
+    .disease-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; background: #fff0ea; color: #7a2800; }
+    .disease-badge.healthy { background: #eaf5ea; color: #1a5a1a; }
+    .severity-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
+    .severity-mild     { background: #eaf5ea; color: #1a5a1a; }
+    .severity-moderate { background: #fff3cc; color: #7a4a00; }
+    .severity-severe   { background: #ffe0e0; color: #8a1010; }
+    .loading-overlay { position: fixed; inset: 0; background: rgba(240,245,240,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 200; }
+    .loading-spinner { width: 40px; height: 40px; border: 4px solid #d4e8d4; border-top-color: #1e5c1e; border-radius: 50%; animation: spin 0.7s linear infinite; margin-bottom: 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .empty-state { text-align: center; padding: 24px; color: #7a9a7a; font-size: 13px; }
+    .btn-export { padding: 6px 14px; background: #1e5c1e; color: #fff; border: none; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    @media (max-width: 600px) { .main { padding: 12px; } .metric-grid { grid-template-columns: repeat(2,1fr); } .chart-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading">
+  <div class="loading-spinner"></div>
+  <div style="font-size:13px;color:#3a6a3a;font-weight:600">Nilo-load ang dashboard...</div>
+</div>
+
+<nav class="topnav">
+  <div style="display:flex;align-items:center;gap:10px">
+    <span style="font-size:22px">🌿</span>
+    <div>
+      <div class="nav-title">AgriSense PH — Admin</div>
+      <div class="nav-sub">Community Analytics Dashboard</div>
+    </div>
+  </div>
+  <div class="nav-right">
+    <span class="realtime-badge"><div class="realtime-dot"></div>Live</span>
+    <span class="nav-user" id="admin-name">—</span>
+    <button class="btn-logout" onclick="logoutUser()">Logout</button>
+  </div>
+</nav>
+
+<main class="main">
+
+  <div class="section-lbl">Buod ng Komunidad</div>
+  <div class="metric-grid">
+    <div class="metric-card"><div class="metric-icon">👨‍🌾</div><div class="metric-value" id="m-farmers">—</div><div class="metric-label">Farmers</div></div>
+    <div class="metric-card"><div class="metric-icon">🔍</div><div class="metric-value" id="m-detections">—</div><div class="metric-label">Detections</div></div>
+    <div class="metric-card"><div class="metric-icon">🦠</div><div class="metric-value" id="m-disease-rate">—</div><div class="metric-label">Disease Rate</div></div>
+    <div class="metric-card"><div class="metric-icon">🚨</div><div class="metric-value" id="m-alerts">—</div><div class="metric-label">Active Alerts</div></div>
+    <div class="metric-card"><div class="metric-icon">🌾</div><div class="metric-value" id="m-rice">—</div><div class="metric-label">Rice Detections</div></div>
+    <div class="metric-card"><div class="metric-icon">🍅</div><div class="metric-value" id="m-tomato">—</div><div class="metric-label">Tomato Detections</div></div>
+  </div>
+
+  <div class="section-lbl">Charts</div>
+  <div class="chart-grid">
+    <div class="chart-card"><div class="chart-title">🥧 Disease Breakdown</div><div class="chart-wrap"><canvas id="chart-disease"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">📈 Weekly Trend</div><div class="chart-wrap"><canvas id="chart-trend"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">📊 Rice vs Tomato</div><div class="chart-wrap"><canvas id="chart-crop"></canvas></div></div>
+    <div class="chart-card"><div class="chart-title">⚠ Severity Distribution</div><div class="chart-wrap"><canvas id="chart-severity"></canvas></div></div>
+  </div>
+
+  <div class="section-lbl">Outbreak Alerts</div>
+  <div id="alerts-container"><div class="empty-state">Walang active alerts.</div></div>
+
+  <div class="section-lbl">Mga Detections</div>
+  <div class="filter-row">
+    <select class="filter-select" id="f-crop" onchange="loadData()">
+      <option value="">Lahat ng Crops</option>
+      <option value="rice">Palay</option>
+      <option value="tomato">Kamatis</option>
+    </select>
+    <select class="filter-select" id="f-days" onchange="loadData()">
+      <option value="7">7 Araw</option>
+      <option value="30" selected>30 Araw</option>
+      <option value="90">3 Buwan</option>
+    </select>
+  </div>
+
+  <div class="table-card">
+    <div class="table-header">
+      <div class="table-title">Detection Records</div>
+      <button class="btn-export" onclick="exportCSV()">📥 Export CSV</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Petsa</th><th>Farmer</th><th>Barangay</th><th>Crop</th><th>Disease</th><th>Confidence</th><th>Severity</th></tr></thead>
+        <tbody id="detections-tbody"><tr><td colspan="7" class="empty-state">Nilo-load...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section-lbl">Farmers (<span id="farmers-count">0</span>)</div>
+  <div class="table-card">
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr><th>Pangalan</th><th>Email</th><th>Barangay</th><th>Detections</th><th>Naka-register</th></tr></thead>
+        <tbody id="farmers-tbody"><tr><td colspan="5" class="empty-state">Nilo-load...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/supabase.js"></script>
+<script>
+  let allDetections = [], allFarmers = [], allAlerts = [], charts = {};
+
+  const COLORS = {
+    'Rice Blast':'#c05000','Bacterial Leaf Blight':'#b84a00','Brown Spot':'#8a5a00',
+    'Healthy Rice':'#1e7a3e','Early Blight':'#d04000','Late Blight':'#a03000',
+    'Leaf Mold':'#7a4a20','Healthy Tomato':'#2d8a4e'
+  };
+
+  // ── INIT ──────────────────────────────────────────────────────
+  supabase.auth.getSession().then(async ({ data: { session } }) => {
+    if (!session) { window.location.href = 'auth.html'; return; }
+    const profile = await getUserProfile(session.user.id);
+    if (!profile || !['admin','da_officer'].includes(profile.role)) {
+      alert('Walang access — admin lang ang puwede dito.');
+      await logoutUser(); return;
+    }
+    document.getElementById('admin-name').textContent = profile.name || session.user.email;
+    await loadData();
+    setupRealtime();
+    document.getElementById('loading').style.display = 'none';
+  });
+
+  async function loadData() {
+    const crop = document.getElementById('f-crop').value;
+    const days = document.getElementById('f-days').value;
+    const [detections, farmers, alerts] = await Promise.all([
+      getAllDetections({ crop, days: parseInt(days) }),
+      getAllFarmers(),
+      getActiveAlerts()
+    ]);
+    allDetections = detections;
+    allFarmers    = farmers;
+    allAlerts     = alerts;
+    renderAll();
+  }
+
+  function renderAll() {
+    renderMetrics();
+    renderCharts();
+    renderAlerts();
+    renderDetectionsTable();
+    renderFarmersTable();
+  }
+
+  function renderMetrics() {
+    const total    = allDetections.length;
+    const diseased = allDetections.filter(d => !d.disease?.toLowerCase().includes('healthy')).length;
+    const rice     = allDetections.filter(d => d.crop === 'rice').length;
+    const tomato   = allDetections.filter(d => d.crop === 'tomato').length;
+    document.getElementById('m-farmers').textContent     = allFarmers.length;
+    document.getElementById('m-detections').textContent  = total;
+    document.getElementById('m-disease-rate').textContent= total > 0 ? Math.round(diseased/total*100)+'%' : '0%';
+    document.getElementById('m-alerts').textContent      = allAlerts.length;
+    document.getElementById('m-rice').textContent        = rice;
+    document.getElementById('m-tomato').textContent      = tomato;
+  }
+
+  function renderCharts() {
+    // Disease breakdown
+    const dc = {};
+    allDetections.forEach(d => dc[d.disease] = (dc[d.disease]||0)+1);
+    const ds = Object.entries(dc).sort((a,b)=>b[1]-a[1]);
+    if (charts.disease) charts.disease.destroy();
+    charts.disease = new Chart(document.getElementById('chart-disease'), {
+      type: 'doughnut',
+      data: { labels: ds.map(([d])=>d), datasets: [{ data: ds.map(([,c])=>c), backgroundColor: ds.map(([d])=>COLORS[d]||'#7ab87a'), borderWidth: 2, borderColor: '#fff' }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ font:{size:10}, padding:8 } } } }
+    });
+
+    // Weekly trend
+    const now = new Date();
+    const weeks = ['4 linggo','3 linggo','2 linggo','Nakaraang linggo'];
+    const wd = [0,0,0,0];
+    allDetections.forEach(d => {
+      const daysAgo = Math.floor((now - new Date(d.created_at)) / 86400000);
+      if (daysAgo<7) wd[3]++; else if (daysAgo<14) wd[2]++; else if (daysAgo<21) wd[1]++; else if (daysAgo<28) wd[0]++;
+    });
+    if (charts.trend) charts.trend.destroy();
+    charts.trend = new Chart(document.getElementById('chart-trend'), {
+      type: 'line',
+      data: { labels: weeks, datasets: [{ label:'Detections', data:wd, borderColor:'#1e5c1e', backgroundColor:'rgba(30,92,30,0.1)', tension:0.3, fill:true, pointRadius:5, pointBackgroundColor:'#1e5c1e' }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
+    });
+
+    // Crop comparison
+    const rice = allDetections.filter(d=>d.crop==='rice').length;
+    const tom  = allDetections.filter(d=>d.crop==='tomato').length;
+    if (charts.crop) charts.crop.destroy();
+    charts.crop = new Chart(document.getElementById('chart-crop'), {
+      type: 'bar',
+      data: { labels:['Palay','Kamatis'], datasets:[{ data:[rice,tom], backgroundColor:['#1e5c1e','#c05000'], borderRadius:8 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    });
+
+    // Severity
+    const mild = allDetections.filter(d=>d.severity==='mild').length;
+    const mod  = allDetections.filter(d=>d.severity==='moderate').length;
+    const sev  = allDetections.filter(d=>d.severity==='severe').length;
+    if (charts.severity) charts.severity.destroy();
+    charts.severity = new Chart(document.getElementById('chart-severity'), {
+      type: 'bar',
+      data: { labels:['Mild','Moderate','Severe'], datasets:[{ data:[mild,mod,sev], backgroundColor:['#7ab87a','#c08000','#c02020'], borderRadius:8 }] },
+      options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    });
+  }
+
+  function renderAlerts() {
+    const c = document.getElementById('alerts-container');
+    if (!allAlerts.length) { c.innerHTML = '<div class="empty-state">Walang active alerts. ✓</div>'; return; }
+    c.innerHTML = allAlerts.map(a => `
+      <div class="alert-card ${a.severity}">
+        <div class="alert-dot ${a.severity}"></div>
+        <div style="flex:1">
+          <div class="alert-disease">🚨 ${a.disease}</div>
+          <div class="alert-location">📍 ${a.location_name||'Unknown'}</div>
+          <div class="alert-count">${a.affected_count} cases sa loob ng 7 araw</div>
+          <div class="alert-time">${formatDate(a.created_at)}</div>
+        </div>
+        <button class="alert-resolve" onclick="handleResolve('${a.id}')">✓ Resolve</button>
+      </div>`).join('');
+  }
+
+  async function handleResolve(id) {
+    if (!confirm('I-resolve ang alert na ito?')) return;
+    await resolveAlert(id);
+    await loadData();
+  }
+
+  function renderDetectionsTable() {
+    const tbody = document.getElementById('detections-tbody');
+    if (!allDetections.length) { tbody.innerHTML = '<tr><td colspan="7" class="empty-state">Walang detections pa.</td></tr>'; return; }
+    tbody.innerHTML = allDetections.slice(0,100).map(d => {
+      const isH = d.disease?.toLowerCase().includes('healthy');
+      const sev = d.severity || 'mild';
+      return `<tr>
+        <td style="white-space:nowrap;font-size:12px">${formatDate(d.created_at)}</td>
+        <td>${d.users?.name||'—'}</td>
+        <td>${d.users?.barangay||d.location_name||'—'}</td>
+        <td>${d.crop==='rice'?'🌾 Palay':'🍅 Kamatis'}</td>
+        <td><span class="disease-badge ${isH?'healthy':''}">${d.disease||'—'}</span></td>
+        <td>${d.confidence||'—'}%</td>
+        <td><span class="severity-badge severity-${sev}">${sev}</span></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderFarmersTable() {
+    const tbody = document.getElementById('farmers-tbody');
+    document.getElementById('farmers-count').textContent = allFarmers.length;
+    if (!allFarmers.length) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">Walang farmers pa.</td></tr>'; return; }
+    const counts = {};
+    allDetections.forEach(d => counts[d.user_id] = (counts[d.user_id]||0)+1);
+    tbody.innerHTML = allFarmers.map(f => `<tr>
+      <td style="font-weight:600">${f.name||'—'}</td>
+      <td style="color:#5a7a5a">${f.email||'—'}</td>
+      <td>${f.barangay||'—'}</td>
+      <td style="font-weight:700;color:#1e5c1e">${counts[f.id]||0}</td>
+      <td style="color:#9aaa9a;font-size:12px">${formatDate(f.created_at)}</td>
+    </tr>`).join('');
+  }
+
+  function setupRealtime() {
+    supabase.channel('detections-changes')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'detections' }, () => loadData())
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'alerts' }, () => loadData())
+      .subscribe();
+  }
+
+  function exportCSV() {
+    const headers = ['Date','Farmer','Barangay','Crop','Disease','Confidence','Severity','Location'];
+    const rows = allDetections.map(d => [
+      formatDate(d.created_at), d.users?.name||'', d.users?.barangay||'',
+      d.crop, d.disease, d.confidence, d.severity||'', d.location_name||''
+    ]);
+    const csv = [headers,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv],{type:'text/csv'});
+    const url  = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href=url; link.download='agrisense_data.csv';
+    document.body.appendChild(link); link.click();
+    setTimeout(()=>{document.body.removeChild(link);URL.revokeObjectURL(url);},100);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgriSense PH — Analytics</title>
+  <meta name="theme-color" content="#1e5c1e">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f5f0; min-height: 100vh; }
+
+    /* Header */
+    .header { background: #1e5c1e; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .back-btn { background: rgba(255,255,255,0.15); border: none; color: #fff; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none; display: flex; align-items: center; gap: 5px; }
+    .header-title { color: #fff; font-size: 15px; font-weight: 700; }
+    .header-sub   { color: #a8d4a8; font-size: 10px; }
+
+    /* Content */
+    .content { max-width: 480px; margin: 0 auto; padding: 14px 12px 80px; }
+
+    /* Section label */
+    .section-lbl { font-size: 11px; font-weight: 700; color: #3a6a3a; letter-spacing: 0.07em; text-transform: uppercase; margin: 16px 0 8px; display: flex; align-items: center; gap: 6px; }
+    .section-lbl::after { content: ''; flex: 1; height: 1px; background: #d4e8d4; }
+
+    /* Metric cards */
+    .metric-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 4px; }
+    .metric-card { background: #fff; border-radius: 14px; padding: 14px; border: 0.5px solid #d4e8d4; }
+    .metric-icon  { font-size: 20px; margin-bottom: 6px; display: block; }
+    .metric-value { font-size: 28px; font-weight: 800; color: #1a3a1a; line-height: 1; }
+    .metric-label { font-size: 11px; color: #5a7a5a; margin-top: 3px; }
+
+    /* Chart */
+    .chart-card { background: #fff; border-radius: 14px; padding: 14px; border: 0.5px solid #d4e8d4; margin-bottom: 12px; }
+    .chart-title { font-size: 13px; font-weight: 700; color: #1a3a1a; margin-bottom: 12px; }
+    .chart-wrap  { position: relative; height: 200px; }
+
+    /* History list */
+    .history-card { background: #fff; border-radius: 14px; border: 0.5px solid #d4e8d4; overflow: hidden; margin-bottom: 12px; }
+    .history-header { padding: 12px 14px; font-size: 13px; font-weight: 700; color: #1a3a1a; border-bottom: 1px solid #e8f0e8; display: flex; justify-content: space-between; align-items: center; }
+    .history-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 0.5px solid #f0f8f0; }
+    .history-row:last-child { border-bottom: none; }
+    .history-crop { font-size: 20px; flex-shrink: 0; }
+    .history-info { flex: 1; min-width: 0; }
+    .history-disease { font-size: 13px; font-weight: 600; color: #1a3a1a; }
+    .history-meta    { font-size: 11px; color: #7a9a7a; margin-top: 2px; }
+    .history-conf { font-size: 12px; font-weight: 700; padding: 3px 8px; border-radius: 10px; flex-shrink: 0; }
+    .conf-high   { background: #eaf5ea; color: #1a5a1a; }
+    .conf-medium { background: #fff8e8; color: #7a4a00; }
+    .conf-low    { background: #fff0f0; color: #8a1010; }
+
+    /* Severity bar */
+    .severity-bar { display: flex; gap: 4px; margin-bottom: 12px; }
+    .sev-segment { flex: 1; height: 8px; border-radius: 4px; }
+    .sev-mild     { background: #7ab87a; }
+    .sev-moderate { background: #c08000; }
+    .sev-severe   { background: #c02020; }
+    .sev-labels { display: flex; justify-content: space-between; font-size: 10px; color: #5a7a5a; margin-top: 4px; }
+
+    /* Export button */
+    .btn-export { width: 100%; padding: 12px; background: #eaf5ea; color: #1e5c1e; border: 1.5px solid #a8d0a8; border-radius: 12px; font-size: 13px; font-weight: 700; cursor: pointer; margin-bottom: 8px; }
+
+    /* Loading */
+    .loading { text-align: center; padding: 40px 20px; color: #5a7a5a; }
+    .loading-spinner { width: 32px; height: 32px; border: 3px solid #d4e8d4; border-top-color: #1e5c1e; border-radius: 50%; animation: spin 0.7s linear infinite; margin: 0 auto 12px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Empty state */
+    .empty-state { text-align: center; padding: 30px 20px; color: #7a9a7a; }
+    .empty-icon  { font-size: 40px; display: block; margin-bottom: 10px; }
+
+    /* Bottom nav */
+    .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #d4e8d4; display: flex; max-width: 480px; margin: 0 auto; }
+    .nav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 4px; cursor: pointer; background: none; border: none; }
+    .nav-icon { width: 22px; height: 22px; stroke: #9ab49a; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .nav-label { font-size: 10px; font-weight: 600; color: #8a9a8a; }
+    .nav-tab.active .nav-icon  { stroke: #1e5c1e; }
+    .nav-tab.active .nav-label { color: #1e5c1e; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="header-left">
+      <a href="index.html" class="back-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+        Bumalik
+      </a>
+      <div>
+        <div class="header-title">📊 Aking Analytics</div>
+        <div class="header-sub" id="farmer-name-sub">AgriSense PH</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="content" id="content">
+    <div class="loading">
+      <div class="loading-spinner"></div>
+      <div>Nilo-load ang iyong data...</div>
+    </div>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-tab" onclick="window.location.href='index.html'">
+      <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="nav-label">Suriin</span>
+    </button>
+    <button class="nav-tab active">
+      <svg class="nav-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span class="nav-label">Analytics</span>
+    </button>
+  </nav>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/supabase.js"></script>
+  <script>
+    let myDetections = [];
+    let charts = {};
+
+    // ── INIT ──────────────────────────────────────────────────
+    async function init() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { window.location.href = 'auth.html'; return; }
+
+      const profile = await getUserProfile(session.user.id);
+      if (profile) {
+        document.getElementById('farmer-name-sub').textContent =
+          `👨‍🌾 ${profile.name} · ${profile.barangay || 'Central Luzon'}`;
+      }
+
+      myDetections = await getFarmerDetections(session.user.id, 100);
+      renderDashboard();
+    }
+
+    // ── RENDER ────────────────────────────────────────────────
+    function renderDashboard() {
+      const container = document.getElementById('content');
+
+      if (!myDetections.length) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <span class="empty-icon">🌱</span>
+            <div style="font-size:14px;font-weight:700;color:#3a6a3a;margin-bottom:6px">Wala pang detections</div>
+            <div style="font-size:13px;color:#7a9a7a">Mag-detect ng sakit para makita ang iyong analytics dito.</div>
+          </div>
+          <a href="index.html" style="display:block">
+            <button style="width:100%;padding:13px;background:#1e5c1e;color:#fff;border:none;border-radius:14px;font-size:14px;font-weight:700;cursor:pointer">
+              🔍 Mag-detect ngayon
+            </button>
+          </a>`;
+        return;
+      }
+
+      const total    = myDetections.length;
+      const diseased = myDetections.filter(d => !d.disease?.toLowerCase().includes('healthy')).length;
+      const healthy  = total - diseased;
+      const rice     = myDetections.filter(d => d.crop === 'rice').length;
+      const tomato   = myDetections.filter(d => d.crop === 'tomato').length;
+      const avgConf  = Math.round(myDetections.reduce((s,d) => s + (d.confidence||0), 0) / total);
+      const mild     = myDetections.filter(d => d.severity === 'mild').length;
+      const moderate = myDetections.filter(d => d.severity === 'moderate').length;
+      const severe   = myDetections.filter(d => d.severity === 'severe').length;
+
+      // Disease counts
+      const dc = {};
+      myDetections.forEach(d => dc[d.disease] = (dc[d.disease]||0)+1);
+      const topDiseases = Object.entries(dc).sort((a,b)=>b[1]-a[1]).slice(0,5);
+
+      container.innerHTML = `
+        <!-- Metrics -->
+        <div class="section-lbl">Buod · Summary</div>
+        <div class="metric-grid">
+          <div class="metric-card">
+            <span class="metric-icon">🔍</span>
+            <div class="metric-value">${total}</div>
+            <div class="metric-label">Kabuuang Detections</div>
+          </div>
+          <div class="metric-card">
+            <span class="metric-icon">🦠</span>
+            <div class="metric-value">${diseased}</div>
+            <div class="metric-label">May Sakit (${total>0?Math.round(diseased/total*100):0}%)</div>
+          </div>
+          <div class="metric-card">
+            <span class="metric-icon">✅</span>
+            <div class="metric-value">${healthy}</div>
+            <div class="metric-label">Malusog (${total>0?Math.round(healthy/total*100):0}%)</div>
+          </div>
+          <div class="metric-card">
+            <span class="metric-icon">🎯</span>
+            <div class="metric-value">${avgConf}%</div>
+            <div class="metric-label">Average Accuracy</div>
+          </div>
+        </div>
+
+        <!-- Severity -->
+        <div class="section-lbl">Severity Level</div>
+        <div class="chart-card">
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div style="flex:${mild||1}" class="sev-segment sev-mild"></div>
+            <div style="flex:${moderate||0.01}" class="sev-segment sev-moderate"></div>
+            <div style="flex:${severe||0.01}" class="sev-segment sev-severe"></div>
+          </div>
+          <div class="sev-labels">
+            <span>🟢 Mild: ${mild}</span>
+            <span>🟡 Moderate: ${moderate}</span>
+            <span>🔴 Severe: ${severe}</span>
+          </div>
+        </div>
+
+        <!-- Disease Chart -->
+        <div class="section-lbl">Mga Sakit · Disease Breakdown</div>
+        <div class="chart-card">
+          <div class="chart-wrap"><canvas id="disease-chart"></canvas></div>
+        </div>
+
+        <!-- Crop split -->
+        <div class="section-lbl">Per Pananim · By Crop</div>
+        <div class="chart-card">
+          <div class="chart-wrap"><canvas id="crop-chart"></canvas></div>
+        </div>
+
+        <!-- History -->
+        <div class="section-lbl">Kasaysayan · Detection History</div>
+        <div class="history-card">
+          <div class="history-header">
+            <span>Huling ${Math.min(myDetections.length, 20)} Detections</span>
+            <button onclick="exportMyCSV()" style="background:#eaf5ea;border:none;border-radius:8px;padding:4px 10px;font-size:11px;font-weight:600;color:#1a5a1a;cursor:pointer">📥 Export</button>
+          </div>
+          ${myDetections.slice(0,20).map(d => {
+            const isHealthy = d.disease?.toLowerCase().includes('healthy');
+            const confClass = d.confidence >= 85 ? 'conf-high' : d.confidence >= 70 ? 'conf-medium' : 'conf-low';
+            const cropEmoji = d.crop === 'rice' ? '🌾' : '🍅';
+            return `
+              <div class="history-row">
+                <div class="history-crop">${cropEmoji}</div>
+                <div class="history-info">
+                  <div class="history-disease" style="color:${isHealthy?'#1a7a3a':'#c05000'}">${d.disease||'—'}</div>
+                  <div class="history-meta">${formatDate(d.created_at)} · ${d.location_name||'—'}</div>
+                </div>
+                <div class="history-conf ${confClass}">${d.confidence||'—'}%</div>
+              </div>`;
+          }).join('')}
+        </div>`;
+
+      // Render charts after DOM update
+      setTimeout(() => {
+        renderDiseaseChart(topDiseases);
+        renderCropChart(rice, tomato);
+      }, 100);
+    }
+
+    function renderDiseaseChart(topDiseases) {
+      const colors = ['#c05000','#b84a00','#8a5a00','#1e7a3e','#d04000'];
+      if (charts.disease) charts.disease.destroy();
+      charts.disease = new Chart(document.getElementById('disease-chart'), {
+        type: 'bar',
+        data: {
+          labels: topDiseases.map(([d]) => d),
+          datasets: [{ data: topDiseases.map(([,c]) => c), backgroundColor: colors, borderRadius: 8 }]
+        },
+        options: {
+          responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+          plugins: { legend: { display: false } },
+          scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } }, y: { ticks: { font: { size: 10 } } } }
+        }
+      });
+    }
+
+    function renderCropChart(rice, tomato) {
+      if (charts.crop) charts.crop.destroy();
+      charts.crop = new Chart(document.getElementById('crop-chart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Palay / Rice', 'Kamatis / Tomato'],
+          datasets: [{ data: [rice, tomato], backgroundColor: ['#1e5c1e', '#c05000'], borderWidth: 2, borderColor: '#fff' }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+      });
+    }
+
+    function exportMyCSV() {
+      const headers = ['Date', 'Crop', 'Disease', 'Confidence', 'Severity', 'Location'];
+      const rows = myDetections.map(d => [
+        formatDate(d.created_at), d.crop, d.disease, d.confidence, d.severity||'', d.location_name||''
+      ]);
+      const csv = [headers,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+      const blob = new Blob([csv],{type:'text/csv'});
+      const url  = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href=url; link.download='my_detections.csv';
+      document.body.appendChild(link); link.click();
+      setTimeout(()=>{document.body.removeChild(link);URL.revokeObjectURL(url);},100);
+    }
+
+    init();
+  </script>
+</body>
+</html>

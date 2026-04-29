@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>AgriSense PH — Smart Disease Detector</title>
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AgriSense PH">
+  <meta name="theme-color" content="#1e5c1e">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="assets/icons/icon-192.png">
+  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/weather.css">
+  <link rel="stylesheet" href="css/result.css">
+</head>
+<body>
+
+  <!-- Auth check — redirect to login if not logged in -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Quick auth check before anything loads
+    const _sb = window.supabase.createClient(
+      'https://qyiqodoqvavrqfddaxbn.supabase.co',
+      'sb_publishable_T-usxsctS9q0qHvvw-_FJA_rxOtH1yN'
+    );
+    _sb.auth.getSession().then(({ data: { session } }) => {
+      if (!session) window.location.href = 'auth.html';
+    });
+  </script>
+
+  <header class="app-header">
+    <div class="header-left">
+      <div class="app-logo">🌿</div>
+      <div>
+        <div class="app-name-text">AgriSense PH</div>
+        <div class="app-tagline" id="app-tagline">Smart Disease Detector · Central Luzon</div>
+      </div>
+    </div>
+    <button class="lang-toggle" onclick="toggleLanguage()" id="lang-btn">
+      <span class="active-lang" id="lang-active">FIL</span>
+      <span style="color:rgba(255,255,255,0.5)">/</span>
+      <span id="lang-inactive" style="color:rgba(255,255,255,0.5)">EN</span>
+    </button>
+  </header>
+
+  <main class="screen-content" id="screen-content">
+
+    <div class="weather-hero" id="weather-hero">
+      <div id="weather-body"></div>
+    </div>
+
+    <div class="section-label" id="crop-label">Pananim / Crop</div>
+    <div class="crop-row">
+      <button class="crop-btn active" id="crop-rice" onclick="selectCrop('rice')">
+        <span class="crop-emoji">🌾</span>
+        <div class="crop-name" id="rice-name">Palay <span class="crop-risk-dot" id="rice-risk-dot" style="display:none"></span></div>
+        <div class="crop-sub">Rice</div>
+      </button>
+      <button class="crop-btn" id="crop-tomato" onclick="selectCrop('tomato')">
+        <span class="crop-emoji">🍅</span>
+        <div class="crop-name" id="tomato-name">Kamatis <span class="crop-risk-dot" id="tomato-risk-dot" style="display:none"></span></div>
+        <div class="crop-sub">Tomato</div>
+      </button>
+    </div>
+
+    <div class="section-label" id="photo-label">Larawan / Photo</div>
+    <div class="preview-wrap" id="preview-wrap">
+      <video id="video" autoplay playsinline></video>
+      <img id="uploaded-img" alt="Leaf photo">
+      <div class="placeholder-content" id="placeholder">
+        <svg viewBox="0 0 48 48"><rect x="4" y="10" width="40" height="30" rx="4"/><circle cx="24" cy="25" r="8"/><path d="M16 10l3-5h10l3 5"/></svg>
+        <p id="placeholder-text">Itutok ang camera sa dahon ng palay</p>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="btn-action btn-camera" id="btn-camera" onclick="startCamera()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="15" rx="2"/><path d="M16 7l-2-4H10L8 7"/><circle cx="12" cy="14" r="3"/></svg>
+        Camera
+      </button>
+      <button class="btn-action btn-upload" onclick="document.getElementById('file-input').click()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload
+      </button>
+    </div>
+    <input type="file" id="file-input" accept="image/*" style="display:none" onchange="handleUpload(event)">
+
+    <button class="btn-detect" id="btn-detect" onclick="runDetection()" disabled>
+      <span id="detect-text">🔍 Suriin ang Dahon / Detect Disease</span>
+      <div class="spinner" id="spinner"></div>
+    </button>
+
+    <div id="status-msg" role="status">Nilo-load ang modelo ng palay...</div>
+
+    <section class="result-card" id="result-card">
+      <span class="result-crop-badge badge-rice" id="result-badge">🌾 Palay</span>
+      <div class="result-disease-name disease" id="result-name">—</div>
+      <div class="conf-label" id="conf-label">Katumpakan: 0%</div>
+      <div class="conf-track"><div class="conf-fill" id="conf-fill" style="width:0%"></div></div>
+      <div id="treatment-box"></div>
+      <div id="weather-alert-result"></div>
+      <button class="btn-speak" id="btn-speak" onclick="speakResult()">🔊 Basahin nang Malakas</button>
+      <div class="all-scores" id="all-scores"></div>
+    </section>
+
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="nav-tab" id="tab-home" onclick="switchTab('home')">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span class="nav-label">Home</span>
+    </button>
+    <button class="nav-tab active" id="tab-detect" onclick="switchTab('detect')">
+      <svg class="nav-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span class="nav-label">Suriin</span>
+    </button>
+    <button class="nav-tab" id="tab-analytics" onclick="switchTab('analytics')">
+      <svg class="nav-icon" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span class="nav-label">Analytics</span>
+    </button>
+    <button class="nav-tab" id="tab-weather" onclick="switchTab('weather')">
+      <svg class="nav-icon" viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg>
+      <span class="nav-label">Panahon</span>
+      <div class="nav-dot" id="weather-nav-dot" style="display:none"></div>
+    </button>
+  </nav>
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- AI Libraries -->
+  <script src="libs/tf.min.js"></script>
+  <script src="libs/teachablemachine-image.min.js"></script>
+
+  <!-- App JS — sa tamang order -->
+  <script src="js/supabase.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/diseases.js"></script>
+  <script src="js/weather-rules.js"></script>
+  <script src="js/language.js"></script>
+  <script src="js/voice.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/camera.js"></script>
+  <script src="js/model.js"></script>
+  <script src="js/weather.js"></script>
+  <script src="js/results.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>

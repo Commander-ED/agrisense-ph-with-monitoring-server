@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="fil">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgriSense PH — Login</title>
+  <meta name="theme-color" content="#1e5c1e">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: #f0f5f0; min-height: 100dvh;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; padding: 20px;
+    }
+    .auth-header { text-align: center; margin-bottom: 24px; }
+    .auth-logo {
+      width: 72px; height: 72px; background: #1e5c1e;
+      border-radius: 20px; display: flex; align-items: center;
+      justify-content: center; font-size: 36px; margin: 0 auto 14px;
+    }
+    .auth-title    { font-size: 22px; font-weight: 800; color: #1a3d1a; }
+    .auth-subtitle { font-size: 13px; color: #5a7a5a; margin-top: 4px; }
+    .auth-card {
+      background: #fff; border-radius: 20px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.09);
+      padding: 24px 20px; width: 100%; max-width: 380px;
+    }
+    .tab-row {
+      display: flex; background: #f0f5f0;
+      border-radius: 12px; padding: 4px; margin-bottom: 20px;
+    }
+    .tab-btn {
+      flex: 1; padding: 9px; border: none; background: transparent;
+      border-radius: 9px; font-size: 14px; font-weight: 600;
+      cursor: pointer; color: #5a7a5a; transition: all 0.15s;
+    }
+    .tab-btn.active {
+      background: #fff; color: #1a3d1a;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+    }
+    .form-group { margin-bottom: 14px; }
+    .form-label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: #3a6a3a; margin-bottom: 5px;
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .form-input {
+      width: 100%; padding: 12px 14px;
+      border: 1.5px solid #d4e8d4; border-radius: 12px;
+      font-size: 14px; background: #fff; color: #1a3a1a;
+      transition: border-color 0.15s; outline: none;
+    }
+    .form-input:focus { border-color: #1e5c1e; }
+    .role-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      gap: 8px; margin-bottom: 14px;
+    }
+    .role-card {
+      border: 2px solid #d4e8d4; border-radius: 12px;
+      padding: 10px 6px; text-align: center;
+      cursor: pointer; transition: all 0.15s; background: #f5fbf5;
+    }
+    .role-card.active { border-color: #1e5c1e; background: #eaf5ea; }
+    .role-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+    .role-name { font-size: 11px; font-weight: 700; color: #1a3a1a; }
+    .role-desc { font-size: 9px; color: #5a7a5a; margin-top: 1px; }
+    .role-card.active .role-name { color: #1e5c1e; }
+    .btn-submit {
+      width: 100%; padding: 14px; background: #1e5c1e; color: #fff;
+      border: none; border-radius: 14px; font-size: 15px; font-weight: 700;
+      cursor: pointer; margin-top: 4px; transition: opacity 0.15s, transform 0.1s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-submit:active  { transform: scale(0.98); opacity: 0.85; }
+    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .msg-box {
+      border-radius: 10px; padding: 10px 12px; font-size: 12px;
+      line-height: 1.5; margin-bottom: 14px; display: none;
+    }
+    .msg-box.error   { background: #fff0f0; color: #8a1010; border: 1px solid #ffc0c0; }
+    .msg-box.success { background: #eaf5ea; color: #1a5a1a; border: 1px solid #a8d4a8; }
+    .spinner {
+      display: none; width: 18px; height: 18px;
+      border: 2.5px solid rgba(255,255,255,0.4);
+      border-top-color: #fff; border-radius: 50%;
+      animation: spin 0.65s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .footer-text { text-align: center; font-size: 12px; color: #7a9a7a; margin-top: 20px; }
+    #admin-code-group { display: none; }
+    #barangay-group   { display: none; }
+  </style>
+</head>
+<body>
+
+  <div class="auth-header">
+    <div class="auth-logo">🌿</div>
+    <div class="auth-title">AgriSense PH</div>
+    <div class="auth-subtitle">Smart Crop Disease Detection · Central Luzon</div>
+  </div>
+
+  <div class="auth-card">
+    <div class="tab-row">
+      <button class="tab-btn active" id="tab-login"
+              onclick="switchTab('login')">Mag-login</button>
+      <button class="tab-btn" id="tab-register"
+              onclick="switchTab('register')">Mag-register</button>
+    </div>
+
+    <div class="msg-box" id="msg-box"></div>
+
+    <!-- LOGIN FORM -->
+    <div id="login-form">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="login-email" placeholder="iyong@email.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="login-password" placeholder="••••••••">
+      </div>
+      <button class="btn-submit" id="btn-login" onclick="handleLogin()">
+        <span id="login-text">Mag-login</span>
+        <div class="spinner" id="login-spinner"></div>
+      </button>
+    </div>
+
+    <!-- REGISTER FORM -->
+    <div id="register-form" style="display:none">
+      <div class="form-group">
+        <label class="form-label">Piliin ang iyong role</label>
+        <div class="role-grid">
+          <div class="role-card active" id="role-farmer" onclick="selectRole('farmer')">
+            <span class="role-icon">👨‍🌾</span>
+            <div class="role-name">Farmer</div>
+            <div class="role-desc">Mag-detect ng sakit</div>
+          </div>
+          <div class="role-card" id="role-admin" onclick="selectRole('admin')">
+            <span class="role-icon">👨‍💼</span>
+            <div class="role-name">Admin</div>
+            <div class="role-desc">Analytics</div>
+          </div>
+          <div class="role-card" id="role-da_officer" onclick="selectRole('da_officer')">
+            <span class="role-icon">🏛️</span>
+            <div class="role-name">DA Officer</div>
+            <div class="role-desc">Government</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" id="admin-code-group">
+        <label class="form-label">Access Code</label>
+        <input type="password" class="form-input" id="admin-code"
+               placeholder="I-enter ang access code">
+        <div style="font-size:11px;color:#7a9a7a;margin-top:4px">
+          Makuha sa system administrator.
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Buong Pangalan</label>
+        <input type="text" class="form-input" id="reg-name" placeholder="Juan dela Cruz">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" id="reg-email" placeholder="iyong@email.com">
+      </div>
+
+      <div class="form-group" id="barangay-group">
+        <label class="form-label">Barangay / Municipality</label>
+        <input type="text" class="form-input" id="reg-barangay"
+               placeholder="hal. Brgy. Lidong, Cabanatuan City">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" class="form-input" id="reg-password"
+               placeholder="Minimum 6 characters">
+      </div>
+
+      <button class="btn-submit" id="btn-register" onclick="handleRegister()">
+        <span id="register-text">Mag-register</span>
+        <div class="spinner" id="register-spinner"></div>
+      </button>
+    </div>
+  </div>
+
+  <div class="footer-text">AgriSense PH v2.0 · Para sa mga magsasaka ng Central Luzon</div>
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Direct Supabase initialization — para siguradong gumagana
+    const _supabase = window.supabase.createClient(
+      'https://qyiqodoqvavrqfddaxbn.supabase.co',
+      'sb_publishable_T-usxsctS9q0qHvvw-_FJA_rxOtH1yN'
+    );
+
+    const ACCESS_CODES = {
+      admin:      'AGRI-ADMIN-2025',
+      da_officer: 'DA-OFFICER-2025'
+    };
+
+    let currentRole = 'farmer';
+
+    // Check if already logged in
+    _supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const { data: profile } = await _supabase
+          .from('users').select('role').eq('id', session.user.id).single();
+        if (profile) redirectByRole(profile.role);
+      }
+    });
+
+    function switchTab(tab) {
+      document.getElementById('login-form').style.display    = tab === 'login'    ? 'block' : 'none';
+      document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+      document.getElementById('tab-login').classList.toggle('active',    tab === 'login');
+      document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+      hideMsg();
+    }
+
+    function selectRole(role) {
+      currentRole = role;
+      ['farmer', 'admin', 'da_officer'].forEach(r => {
+        document.getElementById(`role-${r}`).classList.toggle('active', r === role);
+      });
+      document.getElementById('barangay-group').style.display   = role === 'farmer' ? 'block' : 'none';
+      document.getElementById('admin-code-group').style.display = role !== 'farmer' ? 'block' : 'none';
+    }
+
+    async function handleLogin() {
+      const email    = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!email || !password) { showMsg('error', 'Punan ang email at password.'); return; }
+
+      setLoading('login', true);
+      try {
+        const { data, error } = await _supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        const { data: profile } = await _supabase
+          .from('users').select('role').eq('id', data.user.id).single();
+
+        showMsg('success', 'Naka-login na! Nire-redirect...');
+        setTimeout(() => redirectByRole(profile?.role || 'farmer'), 800);
+      } catch (error) {
+        setLoading('login', false);
+        showMsg('error', getFriendlyError(error.message));
+      }
+    }
+
+    async function handleRegister() {
+      const name      = document.getElementById('reg-name').value.trim();
+      const email     = document.getElementById('reg-email').value.trim();
+      const password  = document.getElementById('reg-password').value;
+      const barangay  = document.getElementById('reg-barangay').value.trim();
+      const adminCode = document.getElementById('admin-code').value.trim();
+
+      if (!name || !email || !password) { showMsg('error', 'Punan ang lahat ng fields.'); return; }
+      if (password.length < 6) { showMsg('error', 'Password — minimum 6 characters.'); return; }
+      if (currentRole === 'farmer' && !barangay) { showMsg('error', 'Ilagay ang inyong barangay.'); return; }
+      if (currentRole !== 'farmer' && adminCode !== ACCESS_CODES[currentRole]) {
+        showMsg('error', 'Mali ang access code.'); return;
+      }
+
+      setLoading('register', true);
+      try {
+        // Step 1: Create auth account
+        const { data: authData, error: authError } = await _supabase.auth.signUp({ email, password });
+        if (authError) throw authError;
+
+        // Step 2: Save profile to users table
+        const { error: profileError } = await _supabase.from('users').insert({
+          id:        authData.user.id,
+          name:      name,
+          email:     email,
+          role:      currentRole,
+          barangay:  currentRole === 'farmer' ? barangay : null,
+          active:    true,
+          created_at: new Date().toISOString()
+        });
+        if (profileError) throw profileError;
+
+        showMsg('success', 'Matagumpay na na-register! Nire-redirect...');
+        setTimeout(() => redirectByRole(currentRole), 1000);
+      } catch (error) {
+        setLoading('register', false);
+        showMsg('error', getFriendlyError(error.message));
+      }
+    }
+
+    function redirectByRole(role) {
+      const map = { farmer: 'index.html', admin: 'admin.html', da_officer: 'da-dashboard.html' };
+      window.location.href = map[role] || 'index.html';
+    }
+
+    function setLoading(type, loading) {
+      document.getElementById(`btn-${type}`).disabled          = loading;
+      document.getElementById(`${type}-text`).style.display    = loading ? 'none'         : 'inline';
+      document.getElementById(`${type}-spinner`).style.display = loading ? 'inline-block' : 'none';
+    }
+
+    function showMsg(type, msg) {
+      const box = document.getElementById('msg-box');
+      box.className = `msg-box ${type}`; box.textContent = msg; box.style.display = 'block';
+    }
+
+    function hideMsg() { document.getElementById('msg-box').style.display = 'none'; }
+
+    function getFriendlyError(error) {
+      if (!error) return 'May error na nangyari. Subukan muli.';
+      if (error.includes('Invalid login') || error.includes('invalid_credentials')) return 'Mali ang email o password.';
+      if (error.includes('already registered') || error.includes('already been registered')) return 'Ginagamit na ang email na ito. Mag-login na lang.';
+      if (error.includes('Password') || error.includes('password')) return 'Masyadong mahina ang password (minimum 6 characters).';
+      if (error.includes('network') || error.includes('fetch')) return 'Walang internet connection.';
+      if (error.includes('duplicate') || error.includes('unique')) return 'Ginagamit na ang email na ito.';
+      return 'May error: ' + error;
+    }
+  </script>
+
+  <script>
+    let currentRole = 'farmer';
+
+    // ── CHECK IF ALREADY LOGGED IN ────────────────────────────
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session) {
+        const profile = await getUserProfile(session.user.id);
+        if (profile) redirectByRole(profile.role);
+      }
+    });
+
+    function switchTab(tab) {
+      document.getElementById('login-form').style.display    = tab === 'login'    ? 'block' : 'none';
+      document.getElementById('register-form').style.display = tab === 'register' ? 'block' : 'none';
+      document.getElementById('tab-login').classList.toggle('active',    tab === 'login');
+      document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+      hideMsg();
+    }
+
+    function selectRole(role) {
+      currentRole = role;
+      ['farmer', 'admin', 'da_officer'].forEach(r => {
+        document.getElementById(`role-${r}`).classList.toggle('active', r === role);
+      });
+      document.getElementById('barangay-group').style.display   = role === 'farmer' ? 'block' : 'none';
+      document.getElementById('admin-code-group').style.display = role !== 'farmer' ? 'block' : 'none';
+    }
+
+    async function handleLogin() {
+      const email    = document.getElementById('login-email').value.trim();
+      const password = document.getElementById('login-password').value;
+      if (!email || !password) { showMsg('error', 'Punan ang email at password.'); return; }
+
+      setLoading('login', true);
+      const result = await loginUser(email, password);
+      setLoading('login', false);
+
+      if (result.success) {
+        showMsg('success', 'Matagumpay na naka-login! Nire-redirect...');
+        setTimeout(() => redirectByRole(result.profile?.role || 'farmer'), 1000);
+      } else {
+        showMsg('error', getFriendlyError(result.error));
+      }
+    }
+
+    async function handleRegister() {
+      const name      = document.getElementById('reg-name').value.trim();
+      const email     = document.getElementById('reg-email').value.trim();
+      const password  = document.getElementById('reg-password').value;
+      const barangay  = document.getElementById('reg-barangay').value.trim();
+      const adminCode = document.getElementById('admin-code').value.trim();
+
+      if (!name || !email || !password) { showMsg('error', 'Punan ang lahat ng fields.'); return; }
+      if (password.length < 6) { showMsg('error', 'Password — minimum 6 characters.'); return; }
+      if (currentRole === 'farmer' && !barangay) { showMsg('error', 'Ilagay ang inyong barangay.'); return; }
+      if (currentRole !== 'farmer' && adminCode !== ACCESS_CODES[currentRole]) {
+        showMsg('error', 'Mali ang access code.'); return;
+      }
+
+      setLoading('register', true);
+      const result = await registerUser(email, password, name, currentRole, barangay || null);
+      setLoading('register', false);
+
+      if (result.success) {
+        showMsg('success', 'Na-register! I-check ang iyong email para i-confirm ang account, tapos mag-login.');
+      } else {
+        showMsg('error', getFriendlyError(result.error));
+      }
+    }
+
+    function redirectByRole(role) {
+      const map = { farmer: 'index.html', admin: 'admin.html', da_officer: 'da-dashboard.html' };
+      window.location.href = map[role] || 'index.html';
+    }
+
+    function setLoading(type, loading) {
+      document.getElementById(`btn-${type}`).disabled          = loading;
+      document.getElementById(`${type}-text`).style.display    = loading ? 'none'         : 'inline';
+      document.getElementById(`${type}-spinner`).style.display = loading ? 'inline-block' : 'none';
+    }
+
+    function showMsg(type, msg) {
+      const box = document.getElementById('msg-box');
+      box.className = `msg-box ${type}`; box.textContent = msg; box.style.display = 'block';
+    }
+
+    function hideMsg() { document.getElementById('msg-box').style.display = 'none'; }
+
+    function getFriendlyError(error) {
+      if (!error) return 'May error na nangyari.';
+      if (error.includes('Invalid login')) return 'Mali ang email o password.';
+      if (error.includes('already registered')) return 'Ginagamit na ang email na ito.';
+      if (error.includes('Password')) return 'Masyadong mahina ang password (minimum 6 characters).';
+      if (error.includes('network')) return 'Walang internet connection.';
+      return error;
+    }
+  </script>
+</body>
+</html>
